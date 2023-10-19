@@ -2,6 +2,7 @@
 #include "abb_estructura_privada.h"
 #include <stddef.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 nodo_abb_t *crear_nodo(void *elemento)
 {
@@ -189,14 +190,98 @@ void abb_destruir_todo(abb_t *arbol, void (*destructor)(void *))
 	abb_destruir(arbol);
 }
 
+size_t recorrer_iterador_interno(nodo_abb_t *nodo, abb_recorrido recorrido, bool (*funcion)(void *, void *), void *aux, size_t *cantidad, bool *seguir) 
+{
+	if (!nodo || !funcion)
+		return *cantidad;
+
+	if (*seguir) {
+		switch (recorrido) {
+		case PREORDEN:
+			if (!funcion(nodo->elemento, aux))
+				*seguir = false;
+			(*cantidad)++;
+			recorrer_iterador_interno(nodo->izquierda, recorrido, funcion, aux, cantidad, seguir);
+			if (*seguir)
+				recorrer_iterador_interno(nodo->derecha, recorrido, funcion, aux, cantidad, seguir);
+			return *cantidad;
+		case INORDEN:
+			recorrer_iterador_interno(nodo->izquierda, recorrido, funcion, aux, cantidad, seguir);
+			if (*seguir && !funcion(nodo->elemento, aux)) 
+				*seguir = false;
+			(*cantidad)++;
+			if (*seguir)
+				recorrer_iterador_interno(nodo->derecha, recorrido, funcion, aux, cantidad, seguir);
+			return *cantidad;
+		case POSTORDEN:
+			recorrer_iterador_interno(nodo->izquierda, recorrido, funcion, aux, cantidad, seguir);
+			recorrer_iterador_interno(nodo->derecha, recorrido, funcion, aux, cantidad, seguir);
+			if (*seguir && !funcion(nodo->elemento, aux))
+				*seguir = false;
+			(*cantidad)++;
+			return *cantidad;
+		default:
+			return 0;
+		}
+	}
+
+	return *cantidad;
+}
+
 size_t abb_con_cada_elemento(abb_t *arbol, abb_recorrido recorrido,
 			     bool (*funcion)(void *, void *), void *aux)
 {
-	return 0;
+	if (!arbol || !funcion)
+		return 0;
+
+	size_t cantidad = 0;
+	bool seguir = true;
+
+	return recorrer_iterador_interno(arbol->nodo_raiz, recorrido, funcion, aux, &cantidad, &seguir);
+}
+
+size_t recorrer_con_array(nodo_abb_t *nodo, abb_recorrido recorrido, void **array, size_t tamanio_array, size_t *cantidad)
+{
+	if (!nodo || !array)
+		return *cantidad;
+
+	switch (recorrido) {
+	case PREORDEN:
+		if (*cantidad >= tamanio_array)
+			return *cantidad;
+		array[*cantidad] = nodo->elemento;
+		(*cantidad)++;
+		recorrer_con_array(nodo->izquierda, recorrido, array, tamanio_array, cantidad);
+		recorrer_con_array(nodo->derecha, recorrido, array, tamanio_array, cantidad);
+		return *cantidad;
+	case INORDEN:
+		recorrer_con_array(nodo->izquierda, recorrido, array, tamanio_array, cantidad);
+		if (*cantidad >= tamanio_array)
+			return *cantidad;
+		array[*cantidad] = nodo->elemento;
+		(*cantidad)++;
+		recorrer_con_array(nodo->derecha, recorrido, array, tamanio_array, cantidad);
+		return *cantidad;
+	case POSTORDEN:
+		recorrer_con_array(nodo->izquierda, recorrido, array, tamanio_array, cantidad);
+		recorrer_con_array(nodo->derecha, recorrido, array, tamanio_array, cantidad);
+		if (*cantidad >= tamanio_array)
+			return *cantidad;
+		array[*cantidad] = nodo->elemento;
+		(*cantidad)++;
+		return *cantidad;
+	default:
+		return 0;
+	}
 }
 
 size_t abb_recorrer(abb_t *arbol, abb_recorrido recorrido, void **array,
 		    size_t tamanio_array)
 {
-	return 0;
+	if (!arbol || !array)
+		return 0;
+
+	size_t cantidad = 0;
+
+	return recorrer_con_array(arbol->nodo_raiz, recorrido, array, tamanio_array, &cantidad);
 }
